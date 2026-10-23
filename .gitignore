@@ -1,0 +1,9 @@
+# Generated build output
+build/
+
+# Local tooling / editor state
+.claude/
+.DS_Store
+*.log
+.swiftpm/
+xcuserdata/

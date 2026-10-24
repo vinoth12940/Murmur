@@ -1,0 +1,61 @@
+name: Release
+
+# Pushing a tag like v1.0.0 builds, signs, notarizes and publishes Murmur-1.0.0.dmg.
+# One-time setup (secrets and certificate) is described in docs/RELEASING.md.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tag must match VERSION
+        run: |
+          [[ "${GITHUB_REF_NAME#v}" == "$(cat VERSION)" ]] || { echo "Tag ${GITHUB_REF_NAME} does not match VERSION $(cat VERSION)"; exit 1; }
+
+      - name: Unit tests
+        run: ./test.sh
+
+      - name: Import signing certificate
+        env:
+          MURMUR_CERT_P12: ${{ secrets.MURMUR_CERT_P12 }}
+          MURMUR_CERT_PASSWORD: ${{ secrets.MURMUR_CERT_PASSWORD }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/murmur.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          echo "$MURMUR_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$MURMUR_CERT_PASSWORD" -T /usr/bin/codesign
+          rm "$RUNNER_TEMP/cert.p12"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
+
+      - name: Store notarization credentials
+        env:
+          APPLE_ID: ${{ secrets.MURMUR_APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.MURMUR_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.MURMUR_APP_PASSWORD }}
+        run: |
+          xcrun notarytool store-credentials murmur-ci \
+            --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD"
+
+      - name: Build, sign and notarize
+        env:
+          MURMUR_SIGN_IDENTITY: ${{ secrets.MURMUR_SIGN_IDENTITY }}
+          MURMUR_NOTARY_PROFILE: murmur-ci
+        run: ./release.sh
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" build/Murmur-*.dmg build/Murmur-*.dmg.sha256 \
+            --title "Murmur ${GITHUB_REF_NAME#v}" --generate-notes

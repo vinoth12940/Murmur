@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    # Murmur needs the macOS 26 SDK (SpeechAnalyzer, FoundationModels).
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: |
+          swiftc --version
+          sw_vers
+      - name: Unit tests
+        run: ./test.sh
+      - name: Build
+        run: ./build.sh

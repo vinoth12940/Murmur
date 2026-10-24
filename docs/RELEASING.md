@@ -27,6 +27,17 @@ Notarized distribution outside the Mac App Store needs a **Developer ID Applicat
    xcrun notarytool store-credentials "murmur-notary" --apple-id "you@example.com" --team-id "TEAMID"
    ```
 
+### Alternative: use an App Store Connect API key instead of an Apple ID password
+
+If you already have an App Store Connect API key (Users and Access → Integrations → App Store Connect API; note the Key ID, the Issuer ID and download the `AuthKey_<KeyID>.p8` once), `notarytool` can use it directly, so no app-specific password is needed:
+
+```bash
+xcrun notarytool store-credentials "murmur-notary" \
+  --key /path/to/AuthKey_<KeyID>.p8 --key-id <KeyID> --issuer <IssuerID>
+```
+
+The same key can create the Developer ID Application certificate through the API (`POST /v1/certificates` with `certificateType: DEVELOPER_ID_APPLICATION` and a CSR you generate locally, then import the returned certificate with its private key into your login keychain). That call needs a key with the Admin role; with a lower role, create the certificate in Xcode or the developer portal instead. Keep the `.p8` file and the Key and Issuer IDs out of the repository.
+
 ## Cutting a release locally
 
 ```bash

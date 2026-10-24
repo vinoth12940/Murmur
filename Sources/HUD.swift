@@ -57,6 +57,15 @@ final class HUD {
         present()
     }
 
+    /// Live preview while speaking: the tail of what has been recognised so far, next to the level bars.
+    func showLive(_ text: String) {
+        hideTask?.cancel()
+        bars.isHidden = false
+        let tail = text.count > 52 ? "…" + text.suffix(52) : text
+        label.stringValue = tail.isEmpty ? "Listening…" : tail
+        present()
+    }
+
     func updateLevel(_ level: Float) {
         bars.push(CGFloat(level))
     }

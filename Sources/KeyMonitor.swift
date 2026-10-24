@@ -77,6 +77,18 @@ final class KeyMonitor {
         return true
     }
 
+    /// Tears the tap down completely so `start()` can build a fresh one (used after the Mac wakes from sleep).
+    func stop() {
+        if let tap {
+            CGEvent.tapEnable(tap: tap, enable: false)
+            CFMachPortInvalidate(tap)
+        }
+        if let source { CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes) }
+        tap = nil
+        source = nil
+        isDown = false
+    }
+
     private func handle(type: CGEventType, event: CGEvent) {
         switch type {
         case .tapDisabledByTimeout, .tapDisabledByUserInput:

@@ -20,9 +20,16 @@ enum DictationError: LocalizedError {
 
 /// Microphone capture + on-device transcription with Apple's SpeechAnalyzer.
 /// Audio never leaves the Mac: the speech model is a system asset that runs locally.
-final class Dictation {
+///
+/// `@unchecked Sendable`: the audio tap and the configuration observer run off the main thread, but they
+/// only use values captured when the session started; mutable state is changed from one async flow at a time.
+final class Dictation: @unchecked Sendable {
     /// RMS level (0...1) of each captured buffer, called on an audio thread.
     var onLevel: ((Float) -> Void)?
+    /// In-progress text while speaking. Only used when `start(livePreview: true)`; never part of the final transcript.
+    var onPartial: ((String) -> Void)?
+    /// The input device or its format changed while capturing (headphones connected, device unplugged…).
+    var onInterrupted: (() -> Void)?
 
     private let engine = AVAudioEngine()
     private(set) var locale: Locale?
@@ -31,6 +38,8 @@ final class Dictation {
     private var analyzer: SpeechAnalyzer?
     private var inputContinuation: AsyncStream<AnalyzerInput>.Continuation?
     private var resultsTask: Task<String, Error>?
+    private var configObserver: NSObjectProtocol?
+    private var startedAt = Date.distantPast
 
     var isReady: Bool { analyzerFormat != nil }
 
@@ -60,29 +69,55 @@ final class Dictation {
         }
     }
 
-    private func makeTranscriber(_ locale: Locale) -> SpeechTranscriber {
+    private func makeTranscriber(_ locale: Locale, livePreview: Bool = false) -> SpeechTranscriber {
         SpeechTranscriber(locale: locale, transcriptionOptions: [],
-                          reportingOptions: [], attributeOptions: [])
+                          reportingOptions: livePreview ? [.volatileResults] : [], attributeOptions: [])
     }
 
-    func start() async throws {
+    /// Starts capture. If anything fails midway, everything already started is torn down so the
+    /// next `start()` begins from a clean slate (a leftover audio tap would crash the next one).
+    func start(vocabulary: [String] = [], livePreview: Bool = false) async throws {
         guard let locale, let format = analyzerFormat else { throw DictationError.notReady }
         guard await Self.requestMicrophone() else { throw DictationError.microphoneDenied }
+        do {
+            try await begin(locale: locale, format: format, vocabulary: vocabulary, livePreview: livePreview)
+        } catch {
+            await teardown()
+            throw error
+        }
+    }
 
-        let transcriber = makeTranscriber(locale)
+    private func begin(locale: Locale, format: AVAudioFormat, vocabulary: [String], livePreview: Bool) async throws {
+        let transcriber = makeTranscriber(locale, livePreview: livePreview)
         let analyzer = SpeechAnalyzer(modules: [transcriber])
         let (stream, continuation) = AsyncStream.makeStream(of: AnalyzerInput.self)
         self.analyzer = analyzer
         inputContinuation = continuation
 
+        if !vocabulary.isEmpty {
+            let context = AnalysisContext()
+            context.contextualStrings[.general] = vocabulary
+            try await analyzer.setContext(context)
+        }
+
+        let partialHandler = onPartial
         resultsTask = Task {
-            var text = ""
+            var finalized = ""
+            var pending = ""
+            func joined(_ a: String, _ b: String) -> String { a.isEmpty ? b : (b.isEmpty ? a : a + " " + b) }
             for try await result in transcriber.results {
                 let piece = String(result.text.characters).trimmingCharacters(in: .whitespacesAndNewlines)
+                if livePreview, !result.isFinal {
+                    pending = piece
+                    partialHandler?(joined(finalized, pending))
+                    continue
+                }
+                pending = ""
                 if piece.isEmpty { continue }
-                text += (text.isEmpty ? "" : " ") + piece
+                finalized = joined(finalized, piece)
+                if livePreview { partialHandler?(finalized) }
             }
-            return text
+            return joined(finalized, pending)
         }
         try await analyzer.start(inputSequence: stream)
 
@@ -91,9 +126,11 @@ final class Dictation {
         guard let converter = AVAudioConverter(from: inputFormat, to: format) else {
             throw DictationError.noAudioFormat
         }
-        input.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { [weak self] buffer, _ in
-            guard let self else { return }
-            self.onLevel?(Self.level(of: buffer))
+        // The tap runs on a realtime audio thread: it only touches values captured here, never `self`.
+        let levelHandler = onLevel
+        input.removeTap(onBus: 0)
+        input.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { buffer, _ in
+            levelHandler?(Dictation.level(of: buffer))
             let ratio = format.sampleRate / inputFormat.sampleRate
             let capacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio) + 1024
             guard let out = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: capacity) else { return }
@@ -106,8 +143,15 @@ final class Dictation {
                 return buffer
             }
             if error == nil, out.frameLength > 0 {
-                self.inputContinuation?.yield(AnalyzerInput(buffer: out))
+                continuation.yield(AnalyzerInput(buffer: out))
             }
+        }
+        startedAt = Date()
+        configObserver = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil
+        ) { [weak self] _ in
+            guard let self, Date().timeIntervalSince(self.startedAt) > 0.6 else { return }
+            self.onInterrupted?()
         }
         engine.prepare()
         try engine.start()
@@ -124,6 +168,11 @@ final class Dictation {
     }
 
     func cancel() async {
+        await teardown()
+    }
+
+    /// Releases everything a session may hold. Safe to call at any point, any number of times.
+    private func teardown() async {
         stopCapture()
         inputContinuation?.finish()
         inputContinuation = nil
@@ -134,11 +183,13 @@ final class Dictation {
     }
 
     private func stopCapture() {
+        if let configObserver { NotificationCenter.default.removeObserver(configObserver) }
+        configObserver = nil
         if engine.isRunning { engine.stop() }
         engine.inputNode.removeTap(onBus: 0)
     }
 
-    private static func level(of buffer: AVAudioPCMBuffer) -> Float {
+    static func level(of buffer: AVAudioPCMBuffer) -> Float {
         guard let data = buffer.floatChannelData?[0], buffer.frameLength > 0 else { return 0 }
         var sum: Float = 0
         for i in 0..<Int(buffer.frameLength) { sum += data[i] * data[i] }

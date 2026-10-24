@@ -2,8 +2,11 @@
 # Builds build/Murmur-<version>.dmg, signed and notarized. See docs/RELEASING.md for one-time setup.
 #
 #   MURMUR_SIGN_IDENTITY   "Developer ID Application: Your Name (TEAMID)"   required (unless --unsigned)
-#   MURMUR_NOTARY_PROFILE  a `notarytool store-credentials` profile name     optional: without it the
-#                          build is signed but NOT notarized, and says so
+#   MURMUR_NOTARY_PROFILE  a `notarytool store-credentials` profile name     optional: without it (and
+#                          without the API key variables below) the build is signed but NOT notarized
+#   MURMUR_NOTARY_KEY, MURMUR_NOTARY_KEY_ID, MURMUR_NOTARY_ISSUER
+#                          alternative to the profile: an App Store Connect API key (.p8 path, key id,
+#                          issuer id), passed straight to notarytool so no keychain item is needed
 #
 #   ./release.sh --unsigned   ad-hoc DMG for testing the packaging only; Gatekeeper will warn on other Macs
 set -euo pipefail
@@ -36,11 +39,20 @@ fi
 APP=build/Murmur.app
 
 NOTARIZE=0
-if (( ! UNSIGNED )) && [[ -n "${MURMUR_NOTARY_PROFILE:-}" ]]; then NOTARIZE=1; fi
+NOTARY_AUTH=()
+if (( ! UNSIGNED )); then
+  if [[ -n "${MURMUR_NOTARY_PROFILE:-}" ]]; then
+    NOTARIZE=1
+    NOTARY_AUTH=(--keychain-profile "$MURMUR_NOTARY_PROFILE")
+  elif [[ -n "${MURMUR_NOTARY_KEY:-}" && -n "${MURMUR_NOTARY_KEY_ID:-}" && -n "${MURMUR_NOTARY_ISSUER:-}" ]]; then
+    NOTARIZE=1
+    NOTARY_AUTH=(--key "$MURMUR_NOTARY_KEY" --key-id "$MURMUR_NOTARY_KEY_ID" --issuer "$MURMUR_NOTARY_ISSUER")
+  fi
+fi
 
 if (( NOTARIZE )); then
   ditto -c -k --keepParent $APP build/Murmur-notarize.zip
-  xcrun notarytool submit build/Murmur-notarize.zip --keychain-profile "$MURMUR_NOTARY_PROFILE" --wait
+  xcrun notarytool submit build/Murmur-notarize.zip "${NOTARY_AUTH[@]}" --wait
   xcrun stapler staple $APP
   rm build/Murmur-notarize.zip
 fi
@@ -54,7 +66,7 @@ rm -rf "$STAGE"
 
 if (( ! UNSIGNED )); then codesign --force --sign "$MURMUR_SIGN_IDENTITY" --timestamp "$DMG"; fi
 if (( NOTARIZE )); then
-  xcrun notarytool submit "$DMG" --keychain-profile "$MURMUR_NOTARY_PROFILE" --wait
+  xcrun notarytool submit "$DMG" "${NOTARY_AUTH[@]}" --wait
   xcrun stapler staple "$DMG"
 fi
 
@@ -64,5 +76,5 @@ if (( UNSIGNED )); then
 elif (( NOTARIZE )); then
   echo "Built $DMG (signed and notarized)"
 else
-  echo "Built $DMG (signed but NOT notarized: set MURMUR_NOTARY_PROFILE to notarize)"
+  echo "Built $DMG (signed but NOT notarized: set MURMUR_NOTARY_PROFILE, or the MURMUR_NOTARY_KEY* variables, to notarize)"
 fi

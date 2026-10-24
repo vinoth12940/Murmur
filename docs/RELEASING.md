@@ -36,7 +36,13 @@ xcrun notarytool store-credentials "murmur-notary" \
   --key /path/to/AuthKey_<KeyID>.p8 --key-id <KeyID> --issuer <IssuerID>
 ```
 
-The same key can create the Developer ID Application certificate through the API (`POST /v1/certificates` with `certificateType: DEVELOPER_ID_APPLICATION` and a CSR you generate locally, then import the returned certificate with its private key into your login keychain). That call needs a key with the Admin role; with a lower role, create the certificate in Xcode or the developer portal instead. Keep the `.p8` file and the Key and Issuer IDs out of the repository.
+You can also skip the keychain profile and give `release.sh` the key directly, which avoids keychain problems (a saved profile once vanished from a login keychain during testing):
+
+```bash
+export MURMUR_NOTARY_KEY=/path/to/AuthKey_<KeyID>.p8 MURMUR_NOTARY_KEY_ID=<KeyID> MURMUR_NOTARY_ISSUER=<IssuerID>
+```
+
+Creating the Developer ID Application certificate needs the **Account Holder** to do it in the developer portal (Certificates → + → Developer ID Application → G2 Sub-CA → upload a CSR); Apple refuses it through the API even for an Admin key. The same key can then fetch the issued certificate through the API (`GET /v1/certificates/<id>`); import it together with the private key that made the CSR into your login keychain. Keep the `.p8` file and the Key and Issuer IDs out of the repository.
 
 ## Cutting a release locally
 

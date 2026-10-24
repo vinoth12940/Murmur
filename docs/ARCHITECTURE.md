@@ -17,7 +17,7 @@ Murmur is a macOS **menu-bar dictation app**. You trigger it, speak, and the cle
 | Platform | macOS 26+, Apple Silicon (`-target arm64-apple-macosx26.0`) |
 | Speech-to-text | `SpeechAnalyzer` / `SpeechTranscriber`, **on-device** |
 | Text cleanup | Apple Intelligence (`FoundationModels`), **on-device**, with a regex fallback |
-| Privacy | Audio never leaves the Mac; there is no network code |
+| Privacy | Audio never leaves the Mac; no telemetry. The only network request is the user-initiated *Check for Updates…* |
 | Presence | `LSUIElement` — menu-bar icon only, no Dock icon |
 
 **Three ways to start dictating**
@@ -114,7 +114,15 @@ flowchart TB
 | `Paster.swift` | `Paster` | Text insertion | Pasteboard swap, synthetic ⌘V, clipboard restore. |
 | `HUD.swift` | `HUD`, `BarsView` | On-screen status pill | Never takes focus. |
 | `Glyph.swift` | `Glyph` | Menu-bar icon drawing | Switches image while recording. |
-| `Log.swift` | `Log` | Diagnostics | Appends to `~/Library/Logs/Murmur.log`. |
+| `Log.swift` | `Log` | Diagnostics | Appends to `~/Library/Logs/Murmur.log`; rotates at ~512 KB; wake-word speech is logged only in verbose mode. |
+| `SilenceDetector.swift` | `SilenceDetector` | Hands-free auto-stop decisions | Pure logic with the clock passed in; unit-tested. |
+| `SpokenFormatting.swift` | `SpokenFormatting` | "new line" / "new paragraph" | Applied to the cleaned text. |
+| `History.swift` | `History`, `HistoryEntry` | Optional local dictation history | JSON Lines, mode 0600, newest 200; off by default. |
+| `Permissions.swift` | `Permissions` | Live permission status + Settings deep links | Used by the setup window and diagnostics. |
+| `SetupWindow.swift` | `SetupWindowController` | First-run / "Setup & Permissions…" window | Refreshes every second. |
+| `SettingsWindow.swift` | `SettingsWindowController` | Settings window | Drives `AppDelegate` properties and actions. |
+| `Updater.swift` | `Updater` | Version compare, GitHub latest-release check | Network only on user click. |
+| `Diagnostics.swift` | `Diagnostics` | "Copy Diagnostics" report | No transcripts; home path scrubbed. |
 
 ---
 
@@ -359,13 +367,17 @@ flowchart TD
 
 ### The rules file
 
-`~/Library/Application Support/Murmur/rules.md` is created from a template on first run and re-read on **every** dictation (no restart needed).
+`~/Library/Application Support/Murmur/rules.md` is created from a template on first run and re-read on **every** dictation (no restart needed). Rules are loaded when recording **starts**, for the app that is in front at that moment.
 
 | Line type | Example | Effect |
 |---|---|---|
 | Comment / blank | `# notes` | ignored |
-| Replacement | `"open ai" -> "OpenAI"` | sent to model **and** applied literally afterwards |
+| Replacement | `"open ai" -> "OpenAI"` | sent to model **and** applied literally afterwards; target also becomes a recognizer vocabulary hint |
+| Snippet | `"my email" => "me@example.com"` | expanded after cleanup (`\n` = new line); swallows trailing punctuation at the end of the text |
+| Vocabulary | `vocabulary: Murmur, Kubernetes` | passed to the speech recognizer as contextual strings |
+| Section header | `[Mail]` / `[com.apple.mail]` / `[default]` | lines below apply only in that app (matched by display name or bundle id) until the next header |
 | Anything else | `Use American English spelling.` | injected into the model prompt as an instruction |
+| Malformed `->` / `=>` line | `"" -> "x"` | skipped (never sent to the model) |
 
 ---
 
@@ -443,15 +455,21 @@ If Accessibility is missing, `AppDelegate` shows *"Copied to clipboard. Press �
 | `trigger` | String (`TriggerKey` raw) | `rightOption` | Push-to-talk key |
 | `askedAccessibility` | Bool | `false` | Prompt only once |
 | `askedInputMonitoring` | Bool | `false` | Prompt only once |
+| `onboardingDone` | Bool | `false` | The setup window has been shown |
+| `spokenCommands` | Bool | `true` | "new line" / "new paragraph" |
+| `history` | Bool | `false` | Save dictation history |
+| `livePreview` | Bool | `false` | Show recognised words while speaking (experimental) |
+| `verboseLog` | Bool | `false` | Log what the wake word hears |
 
 **Files**
 
 | Path | Purpose |
 |---|---|
 | `~/Library/Application Support/Murmur/rules.md` | User cleanup rules |
-| `~/Library/Logs/Murmur.log` | Diagnostics via `Log.write` |
+| `~/Library/Logs/Murmur.log` (+ `.1`) | Diagnostics via `Log.write`, rotated at ~512 KB |
+| `~/Library/Application Support/Murmur/history.jsonl` | Optional dictation history (off by default, mode 0600) |
 
-Nothing else is persisted — transcripts are kept in memory only (`lastText`, for *Copy Last Dictation*).
+Nothing else is persisted — unless history is turned on, transcripts are kept in memory only (`lastText`, for *Copy Last Dictation*).
 
 ---
 
@@ -477,7 +495,8 @@ flowchart LR
 
 - New `.swift` files in `Sources/` are picked up by the glob automatically.
 - New system frameworks must be added to the `-framework` list in `build.sh`.
-- There is no test suite or linter. Verification is manual: run the app and watch `~/Library/Logs/Murmur.log`.
+- `./test.sh` runs the unit tests (pure logic only). Audio, hotkeys and pasting are checked by hand with [TESTING.md](TESTING.md); watch `~/Library/Logs/Murmur.log`.
+- `./release.sh` produces a signed, notarized DMG; see [RELEASING.md](RELEASING.md).
 
 ---
 
@@ -491,8 +510,8 @@ flowchart LR
 | Regex fallback + literal replacements after the model | Dictation must never fail due to cleanup; user rules must be guaranteed | Fallback is less capable than the model |
 | Wake listener only runs while idle | The mic is a single shared resource | Brief gap between a recording ending and the listener resuming |
 | New analyzer per utterance, cached locale/format | Simple lifecycle, no stale session state | Small setup cost per dictation |
-| Single `@MainActor` coordinator | One place owns all state; avoids locking | `AppDelegate` is large (~440 lines) — gesture logic, menu and flow all live there |
-| No network code, on-device models only | Privacy promise | Requires macOS 26 + Apple Silicon; language list limited to what the OS supports |
+| Single `@MainActor` coordinator | One place owns all state; avoids locking | `AppDelegate` is large (~750 lines) — gesture logic, menu and flow all live there. Pure pieces (`SilenceDetector`, `Rules`, `Cleaner.chunks`) are split out so they can be unit-tested |
+| On-device models only; one user-initiated network call (update check) | Privacy promise, no background networking | Requires macOS 26 + Apple Silicon; language list limited to what the OS supports; no automatic updates |
 
 ---
 
@@ -503,7 +522,7 @@ flowchart LR
 | Hold-to-talk does nothing | Menu shows "Allow Input Monitoring…" | Input Monitoring not granted (`KeyMonitor.isRunning == false`) |
 | ⌃Space does nothing / HUD warning at launch | `Murmur.log`: "⌃Space hotkey NOT registered" | macOS "Select the previous input source" shortcut owns it |
 | Text lands on clipboard but is not pasted | HUD hint; menu "Grant Accessibility…" | Accessibility missing (also reset by ad-hoc re-signing) |
-| "Hey Murmur" never triggers | `Murmur.log` lines starting `wake:` show what was heard | Mishearing outside the fuzzy thresholds; wake toggle off; state not idle |
+| "Hey Murmur" never triggers | Turn on *Log what the wake word hears* in Settings, then read the `wake:` lines in `Murmur.log` | Mishearing outside the fuzzy thresholds; wake toggle off; state not idle |
 | Cleanup seems basic | Menu warning under *Clean Up…* | Apple Intelligence off / not ready / unsupported Mac, or the 20 s timeout hit |
 | Fn trigger conflicts | Trigger submenu note | Set *Press 🌐 key to → Do Nothing* in Keyboard settings |
 | Language greyed or unsupported | HUD error after picking a language | Locale not supported by on-device `SpeechTranscriber` |
@@ -530,3 +549,42 @@ flowchart LR
 | **Analyzer format** | Audio format `SpeechAnalyzer` wants; mic audio is converted into it |
 | **Transient pasteboard type** | `org.nspasteboard.TransientType` — tells clipboard managers to ignore the entry |
 | **TCC** | macOS privacy-permission database (Microphone, Input Monitoring, Accessibility…) |
+
+
+---
+
+## 20. Reliability behaviours
+
+How the app protects itself, and where in the code:
+
+| Situation | Behaviour | Where |
+|---|---|---|
+| `start()` fails after the audio tap was installed | Everything started is torn down (`teardown()`), so the next start cannot hit a duplicate tap | `Dictation.start` / `teardown` |
+| Input device or format changes while recording | `AVAudioEngineConfigurationChange` → `onInterrupted` → recording finishes with the text so far (events in the first 0.6 s are ignored as start-up noise) | `Dictation`, `AppDelegate.inputDeviceChanged` |
+| Input device changes while the wake listener runs | The session ends and the loop starts a new one with the new format | `WakeWordListener.runSession` |
+| Mac sleeps / wakes | Recording cancelled and wake listener stopped on sleep; on wake (after 2 s) the event tap is rebuilt (`KeyMonitor.stop()` + `start()`) and the wake listener restarted | `AppDelegate.willSleep` / `didWake` |
+| Speech model cannot be prepared (e.g. offline at first launch) | Retries after 5, 15, 30, then every 60 s; an unsupported language is not retried | `AppDelegate.prepareSpeech` / `scheduleRetry` |
+| Long dictation | Cleaned in ≤700-character chunks; after two failed chunks the rest uses the basic cleanup so the wait stays bounded | `Cleaner.clean` / `chunks` |
+| Focus is in a password field | Recording is refused; before pasting, the check runs again and the text stays unpasted | `Paster.focusedFieldIsSecure` |
+| Second copy launched | It quits at once | `AppDelegate.applicationDidFinishLaunching` |
+| Audio-thread data races | The tap closure only uses values captured at start (`onLevel`, the stream continuation), never `self` | `Dictation.begin` |
+
+## 21. Pipeline order (current)
+
+```mermaid
+flowchart LR
+    RAW["raw transcript"] --> CLEAN["Cleaner.clean<br/>chunked, model or regex"]
+    CLEAN --> REPL["Rules.applyReplacements"]
+    REPL --> SNIP["Rules.applySnippets"]
+    SNIP --> SPOKEN["SpokenFormatting<br/>if enabled"]
+    SPOKEN --> HIST["History.append<br/>if enabled"]
+    HIST --> SECURE{"password field<br/>focused?"}
+    SECURE -- no --> PASTE["Paster.paste"]
+    SECURE -- yes --> STOP(["not pasted"])
+```
+
+Voice editing (⌃⌥Space) takes a different path after transcription: the transcript is the *instruction*; `Paster.selectedText()` reads the selection (Accessibility first, ⌘C fallback), `Cleaner.edit` rewrites it (rejecting output longer than 4× the original + 200 characters), and `Paster.paste` replaces the selection.
+
+## 22. Release pipeline
+
+`build.sh` signs ad-hoc by default, or with the hardened runtime and `Murmur.entitlements` when `MURMUR_SIGN_IDENTITY` is set. `release.sh` adds notarization (`notarytool`), stapling and the DMG, and refuses certificates that cannot be notarized for distribution. `.github/workflows/ci.yml` builds and tests; `release.yml` publishes on a `v*` tag. Setup and secrets: [RELEASING.md](RELEASING.md).

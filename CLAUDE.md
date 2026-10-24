@@ -8,16 +8,21 @@ Murmur is a macOS menu-bar dictation app (Swift, AppKit, no Xcode project / Swif
 
 ## Build & run
 
-There is no package manifest, test suite, or linter. Everything is built by one script that calls `swiftc` directly on `Sources/*.swift`:
+There is no package manifest or linter. Everything is built by one script that calls `swiftc` directly on `Sources/*.swift`:
 
 ```bash
 ./build.sh              # builds build/Murmur.app (wipes build/ first), ad-hoc codesigned
 ./build.sh --install    # also kills the running Murmur, replaces /Applications/Murmur.app
+./test.sh               # unit tests: compiles Sources/*.swift (minus main.swift) with Tests/main.swift
+./release.sh            # signed + notarized DMG (needs MURMUR_SIGN_IDENTITY, MURMUR_NOTARY_PROFILE; see docs/RELEASING.md)
 ```
+
+- `Tests/main.swift` has a tiny `check`/`expect` harness. Put new logic in pure types and add checks there; audio, hotkeys, pasting and windows are checked by hand (`docs/TESTING.md`).
+- Under the Claude sandbox, `swift Tools/make_icon.swift` (used by `build.sh`) and writes to `.git` need the sandbox off; `./test.sh` runs fine inside it.
 
 - New source files in `Sources/` are picked up automatically by the glob; new frameworks must be added to the `-framework` list in `build.sh`.
 - The icon is generated at build time by `Tools/make_icon.swift` (run as a script) → `iconutil`. `build/` is fully generated output.
-- Ad-hoc signing means macOS TCC permissions (Microphone, Speech, Input Monitoring, Accessibility) can reset after rebuilds; the identifier is pinned to `com.vinoth.murmur` to help.
+- Ad-hoc signing (the default) means macOS TCC permissions (Microphone, Speech, Input Monitoring, Accessibility) can reset after rebuilds; the identifier is pinned to `com.vinoth.murmur` to help.
 - `Info.plist` sets `LSUIElement` (no Dock icon) and the mic/speech usage strings.
 - Diagnostics: `~/Library/Logs/Murmur.log` (via `Log.write`). User rules live at `~/Library/Application Support/Murmur/rules.md`.
 
@@ -35,7 +40,11 @@ There is no package manifest, test suite, or linter. Everything is built by one 
 - **`Paster`** – puts text on the pasteboard (marked transient for clipboard managers), synthesizes ⌘V via `CGEvent` (needs Accessibility; waits for the Option key to be released first), then restores the user's prior clipboard after 700 ms if nobody else changed it. Without Accessibility it leaves text on the clipboard and the HUD says so.
 - **`HUD`** – non-activating floating panel (never steals focus from the target field). `Glyph` draws the menu-bar icon.
 
-Settings are plain `UserDefaults` keys on `AppDelegate` (`cleanup`, `locale`, `wakeWord`, `trigger`, `askedAccessibility`, `askedInputMonitoring`); the status-bar menu is rebuilt from scratch on every open in `menuNeedsUpdate`.
+Settings are plain `UserDefaults` keys on `AppDelegate` (`cleanup`, `locale`, `wakeWord`, `trigger`, `spokenCommands`, `history`, `livePreview`, `verboseLog`, `onboardingDone`, `askedAccessibility`, `askedInputMonitoring`); the status-bar menu is rebuilt from scratch on every open in `menuNeedsUpdate`. `SetupWindow` / `SettingsWindow` are AppKit windows that read and write those properties through `AppDelegate`.
+
+Reliability rules that exist for a reason (see `docs/ARCHITECTURE.md` §20): the audio tap closure must never touch `self`; a failed `Dictation.start()` must `teardown()`; sleep/wake rebuilds the event tap; dictation and paste are refused in password fields; cleanup runs in chunks.
+
+`Rules` also understands `"phrase" => "text"` snippets, `vocabulary:` lines and `[App]` sections; rules are loaded when a recording starts, for the frontmost app. `SilenceDetector`, `SpokenFormatting`, `History`, `Updater`, `Diagnostics` and `Permissions` are small helpers; the only network request in the app is `Updater.checkLatest()`, triggered from the menu.
 
 ## Conventions worth knowing
 

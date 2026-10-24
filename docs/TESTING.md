@@ -22,6 +22,7 @@ Use a signed build installed in `/Applications`, on macOS 26, and watch `~/Libra
 
 **Stability**
 - [ ] Connect or disconnect AirPods (or change the input device) *while recording*: recording ends cleanly, text so far is pasted, and the next dictation works.
+- [ ] With the wake word on, start a dictation with the trigger key and talk for 10 seconds: it must not end by itself after about a second (the wake listener releasing the microphone must not look like a device change). The log must not say "input device changed".
 - [ ] Same with the wake word on: "Hey Murmur" still works after the device change.
 - [ ] Close the lid, wake the Mac: hold-to-talk and the wake word work without relaunching.
 - [ ] First launch with Wi-Fi off: the HUD shows an error; turn Wi-Fi on; within about a minute Murmur says it is ready by itself.
@@ -38,9 +39,10 @@ Use a signed build installed in `/Applications`, on macOS 26, and watch `~/Libra
 
 **Features**
 - [ ] Rules: a `vocabulary:` line improves recognition of a name; a snippet expands; a `[Mail]` section applies only in Mail.
-- [ ] "new line" and "new paragraph" insert breaks; turning *Spoken commands* off disables them.
+- [ ] With *Spoken commands* turned on, "new line" and "new paragraph" insert breaks; with it off (the default) they stay as words.
 - [ ] History (turned on): entries appear in the menu, click copies, *Clear History* empties it.
 - [ ] Live text (turned on): the pill shows words while speaking; the final pasted text has no duplicated words.
+- [ ] ⌃⌥Space is sometimes already taken by macOS ("Select next source in Input menu"). Check `Murmur.log` for "edit hotkey NOT registered"; if so, the edit feature is simply unavailable. With Right ⌥ as the trigger, pressing ⌃⌥Space must not start a push-to-talk recording as well.
 - [ ] Edit by voice: select a sentence, press ⌃⌥Space, say "make this shorter", press ⌃⌥Space again: the selection is replaced. With nothing selected it says so and changes nothing.
 - [ ] Setup window: reflects live permission status; Settings window toggles take effect immediately.
 - [ ] *Check for Updates…* reports the current version when up to date.

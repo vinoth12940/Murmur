@@ -21,7 +21,7 @@
 ### Features
 - First-run Setup & Permissions window and a Settings window.
 - Rules file: `vocabulary:` hints for the recognizer, `"phrase" => "text"` snippets, and `[App]` sections for per-app rules.
-- Spoken "new line" / "new paragraph".
+- Optional spoken "new line" / "new paragraph" (off by default, because ordinary sentences can contain those words).
 - Optional local dictation history (off by default).
 - Experimental, off by default: live text while speaking.
 - Experimental: edit selected text by voice with ⌃⌥Space ("make this shorter").

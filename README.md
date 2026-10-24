@@ -84,12 +84,12 @@ The menu bar icon has quick toggles; **Settings…** (⌘,) has everything:
 
 - **Trigger key**: Right ⌥ (default), Fn/Globe, Right ⌘, or Right ⌃. For Fn, set *System Settings → Keyboard → "Press 🌐 key to" → Do Nothing*.
 - **Language**: any language supported by on-device speech recognition.
-- **Clean up with Apple Intelligence**, **Wake word** (keeps the mic open while idle; audio is never saved), **Spoken commands**, **Launch at login**.
+- **Clean up with Apple Intelligence**, **Wake word** (keeps the mic open while idle; audio is never saved), **Spoken commands** (off by default), **Launch at login**.
 - **Live text while speaking** *(experimental, off by default)*.
 - **Save dictation history** *(off by default)*: lists your recent dictations in the menu; click to copy; *Clear* removes them.
 - **Copy Last Dictation**, **Check for Updates…**, **Copy Diagnostics**, **Setup & Permissions…**.
 
-Say **"new line"** or **"new paragraph"** to insert them (turn off under *Spoken commands* if you write those words literally).
+With **Spoken commands** turned on in Settings (off by default), saying **"new line"** or **"new paragraph"** inserts them. Leave it off if you often write those words literally.
 
 ### Custom rules
 

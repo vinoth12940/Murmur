@@ -233,6 +233,9 @@ func testDiagnostics() {
                                     logTail: "error at \(home)/Library/x", permissions: ["Microphone": "Allowed"])
     check(!report.contains(home), "home folder path is scrubbed")
     check(report.contains("~/Library/x"), "scrubbed path keeps the rest")
+    let withSpeech = Diagnostics.report(state: "idle", settings: [:], logTail: "wake: listening\nwake: heard “my secret words”\nwake: MATCH", permissions: [:])
+    check(!withSpeech.contains("secret words"), "wake-word speech is dropped from the report")
+    check(withSpeech.contains("wake: MATCH") && withSpeech.contains("wake: listening"), "other log lines are kept")
     check(report.contains("cleanup: true") && report.contains("Microphone: Allowed") && report.contains("State: idle"),
           "report lists state, settings and permissions")
 }

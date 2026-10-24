@@ -150,7 +150,7 @@ final class Dictation: @unchecked Sendable {
         configObserver = NotificationCenter.default.addObserver(
             forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil
         ) { [weak self] _ in
-            guard let self, Date().timeIntervalSince(self.startedAt) > 0.6 else { return }
+            guard let self, Date().timeIntervalSince(self.startedAt) > 1.0 else { return }
             self.onInterrupted?()
         }
         engine.prepare()

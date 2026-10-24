@@ -456,7 +456,7 @@ If Accessibility is missing, `AppDelegate` shows *"Copied to clipboard. Press �
 | `askedAccessibility` | Bool | `false` | Prompt only once |
 | `askedInputMonitoring` | Bool | `false` | Prompt only once |
 | `onboardingDone` | Bool | `false` | The setup window has been shown |
-| `spokenCommands` | Bool | `true` | "new line" / "new paragraph" |
+| `spokenCommands` | Bool | `false` | "new line" / "new paragraph" |
 | `history` | Bool | `false` | Save dictation history |
 | `livePreview` | Bool | `false` | Show recognised words while speaking (experimental) |
 | `verboseLog` | Bool | `false` | Log what the wake word hears |
@@ -560,7 +560,7 @@ How the app protects itself, and where in the code:
 | Situation | Behaviour | Where |
 |---|---|---|
 | `start()` fails after the audio tap was installed | Everything started is torn down (`teardown()`), so the next start cannot hit a duplicate tap | `Dictation.start` / `teardown` |
-| Input device or format changes while recording | `AVAudioEngineConfigurationChange` → `onInterrupted` → recording finishes with the text so far (events in the first 0.6 s are ignored as start-up noise) | `Dictation`, `AppDelegate.inputDeviceChanged` |
+| Input device or format changes while recording | `AVAudioEngineConfigurationChange` → `onInterrupted` → recording finishes with the text so far (events in the first 1 s are ignored as start-up noise) | `Dictation`, `AppDelegate.inputDeviceChanged` |
 | Input device changes while the wake listener runs | The session ends and the loop starts a new one with the new format | `WakeWordListener.runSession` |
 | Mac sleeps / wakes | Recording cancelled and wake listener stopped on sleep; on wake (after 2 s) the event tap is rebuilt (`KeyMonitor.stop()` + `start()`) and the wake listener restarted | `AppDelegate.willSleep` / `didWake` |
 | Speech model cannot be prepared (e.g. offline at first launch) | Retries after 5, 15, 30, then every 60 s; an unsupported language is not retried | `AppDelegate.prepareSpeech` / `scheduleRetry` |

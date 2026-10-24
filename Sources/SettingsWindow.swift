@@ -82,7 +82,7 @@ final class SettingsWindowController: NSObject {
                      get: { [app] in app.cleanupEnabled }, set: { [app] in app.cleanupEnabled = $0 }),
             checkbox("Wake word: say “Hey Murmur”", note: "Keeps the microphone open while Murmur is idle. Audio is never saved.",
                      get: { [app] in app.wakeWordEnabled }, set: { [app] in app.wakeWordEnabled = $0 }),
-            checkbox("Spoken commands", note: "Say “new line” or “new paragraph” to insert them.",
+            checkbox("Spoken commands", note: "Off by default. When on, saying “new line” or “new paragraph” inserts them (so a sentence that contains those words changes).",
                      get: { [app] in app.spokenCommandsEnabled }, set: { [app] in app.spokenCommandsEnabled = $0 }),
             checkbox("Show live text while speaking (experimental)", note: "Displays what is being recognised in the floating pill.",
                      get: { [app] in app.livePreviewEnabled }, set: { [app] in app.livePreviewEnabled = $0 }),

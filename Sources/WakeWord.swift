@@ -146,7 +146,7 @@ final class WakeWordListener {
             group.addTask {
                 let started = Date()
                 for await _ in NotificationCenter.default.notifications(named: .AVAudioEngineConfigurationChange, object: engine) {
-                    if Date().timeIntervalSince(started) > 0.6 {
+                    if Date().timeIntervalSince(started) > 1.0 {
                         Log.write("wake: input device changed, restarting listener")
                         return false
                     }

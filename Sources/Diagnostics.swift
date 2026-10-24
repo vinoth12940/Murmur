@@ -18,7 +18,10 @@ enum Diagnostics {
         lines += permissions.sorted { $0.key < $1.key }.map { "  \($0.key): \($0.value)" }
         lines += ["", "Settings:"]
         lines += settings.sorted { $0.key < $1.key }.map { "  \($0.key): \($0.value)" }
-        lines += ["", "Recent log:", logTail]
+        // Lines that contain speech heard by the wake word (only present if verbose logging was ever on) never go in a report.
+        let safeLog = logTail.split(separator: "\n", omittingEmptySubsequences: false)
+            .filter { !$0.contains("wake: heard") }.joined(separator: "\n")
+        lines += ["", "Recent log:", safeLog]
         return scrub(lines.joined(separator: "\n"))
     }
 

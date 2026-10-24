@@ -64,7 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         set { defaults.set(newValue, forKey: "wakeWord"); syncWakeListener() }
     }
     var spokenCommandsEnabled: Bool {
-        get { defaults.object(forKey: "spokenCommands") as? Bool ?? true }
+        get { defaults.bool(forKey: "spokenCommands") }
         set { defaults.set(newValue, forKey: "spokenCommands") }
     }
     var historyEnabled: Bool {

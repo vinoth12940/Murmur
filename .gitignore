@@ -12,3 +12,9 @@ xcuserdata/
 CLAUDE.md
 docs/superpowers/
 promo/
+docs/*.md
+SECURITY.md
+CONTRIBUTING.md
+CHANGELOG.md
+.github/ISSUE_TEMPLATE/
+.github/pull_request_template.md

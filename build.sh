@@ -3,7 +3,7 @@
 #
 # Signing is ad-hoc by default. For a distributable build set MURMUR_SIGN_IDENTITY to a
 # "Developer ID Application: Your Name (TEAMID)" identity; the app is then signed with the
-# hardened runtime, which notarization requires (see release.sh and docs/RELEASING.md).
+# hardened runtime, which notarization requires (see release.sh).
 set -euo pipefail
 cd "${0:A:h}"
 

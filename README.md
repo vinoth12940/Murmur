@@ -51,7 +51,6 @@ Murmur is a macOS menu-bar **dictation app**. Hold a key (or say "Hey Murmur"), 
 <p align="center">💜 If Murmur saves you some typing, a ⭐ helps other people find it.</p>
 
 > Murmur is built with plain `swiftc`: no Xcode project, no dependencies.
-> For how it works inside, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
@@ -181,7 +180,7 @@ Replacements are applied literally after cleanup, so they always take effect. Re
 - Murmur will not dictate into, or paste into, password fields.
 - **Diagnostic log:** `~/Library/Logs/Murmur.log` stays on your Mac, is capped at about 512 KB, and records app events only. What the wake word hears is logged **only** if you turn on "Log what the wake word hears" in Settings.
 
-See [SECURITY.md](SECURITY.md) for reporting a problem.
+To report a security problem, please don't open a public issue. Use the repository's **Security** tab → **Report a vulnerability** instead.
 
 ---
 
@@ -209,12 +208,12 @@ For a bug report, use **Copy Diagnostics** from the menu and paste it into the i
 ./build.sh              # build/Murmur.app (wipes build/ first)
 ./build.sh --install    # also replaces /Applications/Murmur.app
 ./test.sh               # unit tests
-./release.sh            # signed + notarized DMG (needs a Developer ID; see docs/RELEASING.md)
+./release.sh            # signed + notarized DMG (needs a Developer ID)
 ```
 
 - Sources live in `Sources/*.swift`; new files are picked up automatically. New system frameworks must be added to the `-framework` list in `build.sh`.
-- Tests are in `Tests/main.swift`; manual checks for audio, hotkeys and pasting are in [docs/TESTING.md](docs/TESTING.md).
-- Architecture, diagrams and design decisions: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Contributing: [CONTRIBUTING.md](CONTRIBUTING.md).
+- Tests are in `Tests/main.swift`.
+- Issues and pull requests are welcome.
 
 **Uninstall:** quit Murmur from its menu, then:
 

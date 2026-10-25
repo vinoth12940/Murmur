@@ -1,7 +1,6 @@
 name: Release
 
 # Pushing a tag like v1.0.0 builds, signs, notarizes and publishes Murmur-1.0.0.dmg.
-# One-time setup (secrets and certificate) is described in docs/RELEASING.md.
 on:
   push:
     tags: ["v*"]

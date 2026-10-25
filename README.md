@@ -35,7 +35,13 @@ If either command fails, install the command line tools with `xcode-select --ins
 
 ## Install
 
-Murmur is distributed as source. Building takes a few seconds.
+### Download (easiest)
+
+Get **Murmur-1.0.0.dmg** from the [Releases page](https://github.com/vinoth12940/Murmur/releases/latest), open it, and drag Murmur to Applications. It is signed with a Developer ID and notarized by Apple, so it opens without a warning.
+
+### Or build from source
+
+Building takes a few seconds.
 
 ```bash
 git clone https://github.com/vinoth12940/Murmur.git
@@ -46,8 +52,6 @@ cd Murmur
 `--install` builds the app, then copies it to `/Applications/Murmur.app`. Open it from Spotlight or Finder; an icon appears in the menu bar (there is no Dock icon).
 
 Prefer not to install? Run `./build.sh` and open `build/Murmur.app` directly.
-
-Signed, notarized downloads will be offered on the [Releases page](https://github.com/vinoth12940/Murmur/releases) once the first one is published.
 
 ### First launch
 

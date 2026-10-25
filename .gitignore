@@ -8,5 +8,7 @@ build/
 .swiftpm/
 xcuserdata/
 
-# Promo videos (rendered locally)
-promo/out/
+# Local-only notes and marketing material
+CLAUDE.md
+docs/superpowers/
+promo/

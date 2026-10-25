@@ -127,7 +127,9 @@ final class WakeWordListener {
                     for try await result in transcriber.results {
                         let heard = String(result.text.characters)
                         let hit = WakePhrase.matches(heard)
-                        Log.write("wake: heard “\(heard.prefix(60))” \(hit ? "→ MATCH" : "")")
+                        // What was heard is private: only written when the user turned on verbose logging.
+                        if hit { Log.write("wake: MATCH") }
+                        else if Log.verbose { Log.write("wake: heard “\(heard.prefix(60))”") }
                         if hit { return true }
                     }
                 } catch {
@@ -137,6 +139,18 @@ final class WakeWordListener {
             }
             group.addTask {
                 try? await Task.sleep(for: .seconds(seconds))
+                return false
+            }
+            // A new input device or format invalidates this session; end it so the loop starts a fresh one.
+            let engine = self.engine
+            group.addTask {
+                let started = Date()
+                for await _ in NotificationCenter.default.notifications(named: .AVAudioEngineConfigurationChange, object: engine) {
+                    if Date().timeIntervalSince(started) > 1.0 {
+                        Log.write("wake: input device changed, restarting listener")
+                        return false
+                    }
+                }
                 return false
             }
             let first = await group.next() ?? false

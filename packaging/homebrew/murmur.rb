@@ -1,5 +1,5 @@
 # Template for a Homebrew cask. Copy it into a tap repository (for example vinoth12940/homebrew-murmur,
-# under Casks/murmur.rb) and update `version` and `sha256` after each release; see docs/RELEASING.md.
+# under Casks/murmur.rb) and update `version` and `sha256` after each release.
 cask "murmur" do
   version "1.0.0"
   sha256 "REPLACE_WITH_THE_SHA256_FROM_Murmur-VERSION.dmg.sha256"

@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Builds build/Murmur-<version>.dmg, signed and notarized. See docs/RELEASING.md for one-time setup.
+# Builds build/Murmur-<version>.dmg, signed and notarized.
 #
 #   MURMUR_SIGN_IDENTITY   "Developer ID Application: Your Name (TEAMID)"   required (unless --unsigned)
 #   MURMUR_NOTARY_PROFILE  a `notarytool store-credentials` profile name     optional: without it (and

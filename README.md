@@ -1,12 +1,54 @@
-# Murmur
+<p align="center">
+  <img src="docs/assets/logo.png" width="128" height="128" alt="Murmur app icon">
+</p>
 
-A macOS menu-bar **dictation app**. Hold a key (or say "Hey Murmur"), speak, and the text is transcribed on your Mac, tidied up by Apple Intelligence, and pasted into whatever app you're using.
+<h1 align="center">Murmur</h1>
 
-- **Private by design:** speech recognition and text cleanup both run on-device. No account, no telemetry.
-- **Fast to use:** hold **Right ⌥** to talk, double-tap for hands-free, or press **⌃Space**.
-- **Cleans up after you:** removes "um"/"uh", stutters and false starts, fixes punctuation, and applies your own rules, snippets and per-app tone.
-- **Works in any app:** native apps, browsers, Electron. It pastes into the focused field, and refuses to dictate into password fields.
-- **Edit by voice:** select text, press **⌃⌥Space**, and say "make this shorter".
+<p align="center">
+  <b>Free, private dictation for your Mac.</b><br>
+  Hold a key, talk, and clean text lands in any app. Nothing leaves your Mac.
+</p>
+
+<p align="center">
+  <a href="https://github.com/vinoth12940/Murmur/releases/latest"><img src="https://img.shields.io/github/v/release/vinoth12940/Murmur?label=download&color=6A5CF0" alt="Latest release"></a>
+  <img src="https://img.shields.io/badge/macOS-26%2B-black?logo=apple" alt="macOS 26 or later">
+  <img src="https://img.shields.io/badge/Apple%20Silicon-M--series-black" alt="Apple Silicon">
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/vinoth12940/Murmur?color=52E0FF" alt="MIT license"></a>
+  <a href="https://github.com/vinoth12940/Murmur/stargazers"><img src="https://img.shields.io/github/stars/vinoth12940/Murmur?style=social" alt="GitHub stars"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/vinoth12940/Murmur/releases/latest"><b>⬇️ Download for Mac</b></a>
+  &nbsp;·&nbsp;
+  <a href="#using-murmur">How to use it</a>
+  &nbsp;·&nbsp;
+  <a href="#privacy">Privacy</a>
+</p>
+
+<p align="center">
+  <img src="docs/assets/demo.gif" width="640" alt="Holding Right Option and saying 'um so I I want to uh meet tuesday, no wait, wednesday'; Murmur pastes 'I want to meet on Wednesday.'">
+</p>
+
+## Why Murmur
+
+Murmur is a macOS menu-bar **dictation app**. Hold a key (or say "Hey Murmur"), speak, and your words are transcribed on your Mac, tidied up by Apple Intelligence, and pasted into whatever app you're using.
+
+| | |
+|---|---|
+| 🎙️ **Talk instead of type** | Hold **Right Option ⌥** to talk, double-tap it for hands-free, press **⌃Space**, or say **"Hey Murmur"** |
+| 🧹 **Cleans up after you** | Removes "um" and "uh", stutters and false starts, and fixes punctuation |
+| ✏️ **Edit by voice** | Select text, press **⌃⌥Space**, and say "make this friendlier" or "fix the grammar" |
+| 📝 **Your words, your rules** | One plain text file for replacements (`"git hub" -> "GitHub"`), snippets and vocabulary |
+| 💼 **The right tone per app** | Formal in Mail, short and casual in Slack |
+| 🖥️ **Works in any app** | Native apps, browsers and Electron. It refuses to type into password fields |
+| 🔒 **Private by design** | Speech recognition and cleanup run on-device. No account, no telemetry |
+| 💸 **Free and open source** | No subscription. MIT licensed |
+
+<p align="center">
+  <img src="docs/assets/features.png" width="760" alt="Murmur features: four ways to start, edit by voice, custom rules, per-app tone, built-in extras, and privacy">
+</p>
+
+<p align="center">💜 If Murmur saves you some typing, a ⭐ helps other people find it.</p>
 
 > Murmur is built with plain `swiftc`: no Xcode project, no dependencies.
 > For how it works inside, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
